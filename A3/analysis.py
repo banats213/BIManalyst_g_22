@@ -105,6 +105,8 @@ def classify_structural_model(str_model):
         if len(dims) != 3:
             continue
         t, b, L = dims
+        if t == 0 or b == 0:
+            continue
 
         is_very_thin = t < 0.3 * b and t < 0.2 * L
         is_large_plan = b * L > 2.0
@@ -130,6 +132,8 @@ def classify_structural_model(str_model):
         if len(dims) != 3:
             continue
         t, b, L = dims
+        if t == 0 or b == 0:
+            continue
 
         is_beam_like = (b > 3 * t) and (L > 4 * t) and (L / b > 2.0)
         if is_beam_like:
@@ -154,6 +158,8 @@ def classify_structural_model(str_model):
         if len(dims) != 3:
             continue
         t, b, L = dims
+        if t == 0 or b == 0:
+            continue
         is_slab_like_col = (t < 0.3 * b) and (t < 0.3 * L)
         if is_slab_like_col:
             slab_like_columns.append(col)
@@ -174,6 +180,8 @@ def classify_structural_model(str_model):
         if len(dims) != 3:
             continue
         t, b, L = dims
+        if t == 0 or b == 0:
+            continue
         is_beam_like_wall = (b < 3 * t and L > 4 * t) or (L / b > 8.0)
         if is_beam_like_wall:
             beam_like_walls.append(wall)
