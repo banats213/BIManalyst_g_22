@@ -1,16 +1,19 @@
+"""Local BCF utilities that wrap the external `bcf` package APIs."""
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 import bcf
 import bcf.v3.visinfo
 import bcf.v3.model
 
 
-def iso_now():
-    return datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
+def iso_now() -> str:
+    # Use timezone-aware UTC (compatible with Python 3.10+)
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace('+00:00', 'Z')
 
 
-def cameraSetup(element, get_bbox_callable):
-    # lazy import to avoid circular imports
+def camera_setup(element, get_bbox_callable):
+    if isinstance(element, list) and element:
+        element = element[0]
     bbox = get_bbox_callable(element)
     center = [(bbox['min'][i] + bbox['max'][i]) / 2 for i in range(3)]
     camera_view_point = [float(bbox['max'][0] * 1.04), float(bbox['max'][1] * 1.04), float(bbox['max'][2] * 1.04)]
@@ -28,7 +31,7 @@ def add_issue(bcf_project, title: str, message: str, author: str, element, ifc_f
         vis = th.add_viewpoint(element)
         vis.set_selected_elements([element])
 
-    cam_pos, cam_dir, cam_up = cameraSetup(element=element, get_bbox_callable=get_bbox_callable)
+    cam_pos, cam_dir, cam_up = camera_setup(element=element, get_bbox_callable=get_bbox_callable)
     vis.visualization_info.perspective_camera = bcf.v3.visinfo.build_camera_from_vectors(camera_position=cam_pos, camera_dir=cam_dir, camera_up=cam_up)
 
     th.comments = [bcf.v3.model.Comment(guid=str(uuid.uuid4()), date=iso_now(), author=author, comment=message, viewpoint=bcf.v3.model.CommentViewpoint(guid=vis.guid))]

@@ -27,20 +27,17 @@ from rich.prompt import Prompt
 # When running this script directly (eg. `python A3/generate_structural_bcf.py`),
 # the package `A3` may not be on `sys.path`. Ensure the repository root is first
 # on `sys.path` so package imports like `A3.geometry` work reliably.
-from pathlib import Path
-import sys
-repo_root = Path(__file__).resolve().parent.parent
-if str(repo_root) not in sys.path:
-    sys.path.insert(0, str(repo_root))
-
-from A3.geometry import get_element_bbox, get_storey_z_ranges, detect_element_floor
-from A3.storey_utils import assigned_storey_guid
-from A3.classify import classify_structural_model
-from A3.bcf_tools import add_issue, add_summary_topic
+from analysis import (
+    get_element_bbox,
+    get_storey_z_ranges,
+    detect_element_floor,
+    assigned_storey_guid,
+    classify_structural_model,
+)
+from bcf_utils import add_issue, add_summary_topic
 
 # this is working
 from bcf.v3.bcfxml import BcfXml
-import bcf
 
 
 def choose_ifc_pair_from_directory(console: Console, directory: str, extension=".ifc") -> tuple[str | None, str | None]:
@@ -101,8 +98,7 @@ def choose_ifc_pair_from_directory(console: Console, directory: str, extension="
         return str_path, arch_path
 
 
-def iso_now() -> str:
-    return datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
+# iso_now is provided by A3.bcf if needed
 
 
 # moved helper functions live in separate modules under A3/
@@ -282,7 +278,6 @@ def generate_structural_bcf(console: Console, str_ifc_path: str, arch_ifc_path: 
     try:
         summary_lines = []
         summary_lines.append("Structural check summary:\n")
-        # per-storey counts
         if wrong_counts:
             summary_lines.append("Wrong-floor elements per assigned storey:")
             for gid, cnt in wrong_counts.items():
@@ -295,7 +290,6 @@ def generate_structural_bcf(console: Console, str_ifc_path: str, arch_ifc_path: 
         else:
             summary_lines.append("No wrong-floor elements found.")
 
-        # totals for other issue types
         total_wrong = len(wrong_floor)
         total_unassigned = len(unassigned)
         total_floating = len(floating)
@@ -311,10 +305,9 @@ def generate_structural_bcf(console: Console, str_ifc_path: str, arch_ifc_path: 
         summary_lines.append(f"- Class-mismatch candidates: {total_class_issues}")
 
         summary_text = "\n".join(summary_lines)
-        th = bcf_project.add_topic("Summary: Structural check results", summary_text, "Structural-Checker", "Summary")
-        th.comments = [bcf.v3.model.Comment(guid=str(uuid.uuid4()), date=iso_now(), author="Structural-Checker", comment=summary_text)]
-    except Exception:
-        console.print("[yellow]Warning: failed to create BCF summary topic (bcf package may be missing or in unexpected state).[/yellow]")
+        add_summary_topic(bcf_project, summary_text, author="Structural-Checker")
+    except Exception as ex:
+        console.print(f"[yellow]Warning: failed to create BCF summary topic: {ex}[/yellow]")
 
     bcf_project.save(filename=output_bcf)
     console.print(f"✅ Wrote BCF: {output_bcf}")
